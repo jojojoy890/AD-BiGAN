@@ -1,0 +1,121 @@
+# Encode a numeric column as zscores
+def encode_numeric_zscore(df, name, mean=None, sd=None):
+    if mean is None:
+        mean = df[name].mean()
+
+    if sd is None:
+        sd = df[name].std()
+
+    df[name] = (df[name] - mean) / sd
+    
+encode_numeric_zscore(df, 'dst_bytes')
+encode_numeric_zscore(df, 'count')
+encode_numeric_zscore(df, 'srv_count')
+encode_numeric_zscore(df, 'dst_host_count')
+encode_numeric_zscore(df, 'dst_host_srv_count')
+
+from keras.models import Sequential
+def build_encoder():
+    model = Sequential()
+    
+    model.add(Dense(8, input_dim=df_train.shape[1]))
+    model.add(layers.BatchNormalization())
+    model.add(layers.LeakyReLU())
+
+    model.add(Dense(4))
+    model.add(layers.BatchNormalization())
+    model.add(layers.LeakyReLU())
+
+    model.add(layers.Dense(4))
+    return model
+
+def make_generator_model():
+    model = Sequential()
+    
+    model.add(layers.Dense(5, use_bias=False, input_shape=(4,)))
+    model.add(layers.BatchNormalization())
+    model.add(layers.LeakyReLU())
+    
+    model.add(Dense(8, activation='relu'))
+    model.add(Dense(df_train.shape[1])) # Multiple output neurons
+    return model
+def make_discriminator_model():
+    model = Sequential()
+    
+    model.add(layers.Dense(100, use_bias=False,input_shape=[1,8]))
+       
+    model.add(layers.LeakyReLU())
+    model.add(layers.Dropout(0.3))
+
+    model.add(layers.Dense(32, use_bias=True))
+    model.add(layers.LeakyReLU())
+    model.add(layers.Dropout(0.3))
+
+   
+    model.add(layers.Dense(1))
+    
+   # model.add(layers.Softmax())
+    
+    return model
+        
+generator = make_generator_model()
+discriminator = make_discriminator_model()
+encoder = build_encoder()
+cross_entropy = tf.keras.losses.BinaryCrossentropy(from_logits=True)
+def discriminator_loss(real_output, fake_output):
+    real_loss = cross_entropy(tf.ones_like(real_output), real_output)
+    fake_loss = cross_entropy(tf.zeros_like(fake_output), fake_output)
+    total_loss = real_loss + fake_loss
+    
+    return total_loss
+def generator_loss(fake_output):
+    return cross_entropy(tf.ones_like(fake_output), fake_output)
+    
+    generator_optimizer = tf.keras.optimizers.Adam(1e-4)
+discriminator_optimizer = tf.keras.optimizers.Adam(1e-4)
+EPOCHS = 1000
+noise = noise_dim = 4
+#num_examples_to_generate = 16
+BATCH_SIZE = 32
+@tf.function
+def train_step(images):
+    $$$noise = keras.random.normal([BATCH_SIZE, noise_dim])
+    $$$images=df_train([8,])
+        
+    $$$d_in = keras.layers.Concatenate(axis=1)([images,noise])
+    
+    https://github.com/eriklindernoren/Keras-GAN/blob/master/bigan/bigan.py "## i refer this code but got error in tensor concatenation##"
+   
+    with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
+      generated_images = generator(noise, training=True)
+    
+      real_output = discriminator([images], training=True)
+      fake_output = discriminator([generated_images], training=True)
+
+      gen_loss = generator_loss(fake_output)
+      disc_loss = discriminator_loss(real_output, fake_output)
+     
+    gradients_of_generator = gen_tape.gradient(gen_loss, generator.trainable_variables)
+    gradients_of_discriminator = disc_tape.gradient(disc_loss, discriminator.trainable_variables)
+
+    generator_optimizer.apply_gradients(zip(gradients_of_generator, generator.trainable_variables))
+    discriminator_optimizer.apply_gradients(zip(gradients_of_discriminator, discriminator.trainable_variables))
+    
+    return (gen_loss,disc_loss)
+    
+    history=dict()
+history['gen']=[]
+history['dis']=[]
+def train(dataset, epochs):
+    for epoch in range(epochs):
+        start = time.time()
+
+        for Batch in dataset:
+
+           gen_loss,dis_loss= train_step(Batch)
+        history['gen'].append(gen_loss)
+        history['dis'].append(dis_loss)
+        print ('Time for epoch {} is {} sec '.format(epoch + 1, time.time()-start))
+        
+ x_train=df_train.values
+ train(x_train,EPOCHS)
